@@ -64,7 +64,7 @@ export class CubeComponent implements OnInit, AfterViewInit {
     this.renderer = new WebGLRenderer({canvas: this.canvas});
     let component: CubeComponent = this;
     (function render() {
-      if(component.resizeRendererToDisplaySize(component.renderer)) {
+      if (component.resizeRendererToDisplaySize(component.renderer)) {
         const canvas = component.renderer.domElement;
         component.camera.aspect = canvas.clientWidth / canvas.clientHeight;
         component.camera.updateProjectionMatrix();
