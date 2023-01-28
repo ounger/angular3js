@@ -1,5 +1,14 @@
 import {AfterViewInit, Component, ElementRef, Input, OnInit, ViewChild} from '@angular/core';
-import {BoxGeometry, Color, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene, WebGLRenderer} from "three";
+import {
+  BoxGeometry,
+  Color,
+  DirectionalLight,
+  Mesh,
+  MeshPhongMaterial,
+  PerspectiveCamera,
+  Scene,
+  WebGLRenderer
+} from "three";
 
 @Component({
   selector: 'app-cube',
@@ -24,7 +33,7 @@ export class CubeComponent implements OnInit, AfterViewInit {
 
   private camera!: PerspectiveCamera;
   private geometry = new BoxGeometry(1, 1, 1);
-  private material = new MeshBasicMaterial();
+  private material = new MeshPhongMaterial({color: 0x00ff00});
   private cube: Mesh = new Mesh(this.geometry, this.material);
   private renderer!: WebGLRenderer;
   private scene!: Scene;
@@ -47,6 +56,15 @@ export class CubeComponent implements OnInit, AfterViewInit {
     this.scene = new Scene();
     this.scene.background = new Color(0x000000);
     this.scene.add(this.cube);
+    this.addLightningToScene();
+  }
+
+  private addLightningToScene() {
+    const color = 0xFFFFFF;
+    const intensity = 1;
+    const light = new DirectionalLight(color, intensity);
+    light.position.set(-1, 2, 4);
+    this.scene.add(light);
   }
 
   private createCamera() {
