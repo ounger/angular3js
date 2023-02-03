@@ -6,8 +6,6 @@ import {
   Line,
   LineBasicMaterial,
   LineLoop,
-  Mesh,
-  MeshPhongMaterial,
   Object3D,
   Path,
   PerspectiveCamera,
@@ -15,8 +13,7 @@ import {
   Vector3,
   WebGLRenderer
 } from "three";
-import {TextGeometry} from "three/examples/jsm/geometries/TextGeometry";
-import {Font, FontLoader} from "three/examples/jsm/loaders/FontLoader";
+import {CSS2DObject, CSS2DRenderer} from "three/examples/jsm/renderers/CSS2DRenderer";
 
 @Component({
   selector: 'app-cube',
@@ -34,9 +31,9 @@ export class CubeComponent implements OnInit, AfterViewInit {
 
   private camera!: PerspectiveCamera;
   private renderer!: WebGLRenderer;
+  private labelRenderer!: CSS2DRenderer;
   private scene!: Scene;
   private objects = new Array<Object3D>();
-  private font!: Font;
 
   constructor() {
     // Do nothing
@@ -47,12 +44,6 @@ export class CubeComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    const loader = new FontLoader();
-
-    let component: CubeComponent = this;
-    loader.load('assets/helvetiker_regular.typeface.json', function (response) {
-      component.font = response;
-    });
     this.createScene();
     this.createCamera();
     this.startRenderingLoop();
@@ -136,29 +127,20 @@ export class CubeComponent implements OnInit, AfterViewInit {
     const line = new Line(geometry, material);
     line.computeLineDistances();
     this.scene.add(line);
+
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = 'Hello World';
+    label.style.marginTop = '-1em';
+    const labelObj = new CSS2DObject(label);
+    labelObj.position.set(0, 0, 0);
+    this.objects.push(labelObj);
+    line.add(labelObj);
   }
 
   private addLabels(axis: "x" | "y" | "z") {
-    console.log(this.font);
-    let geom = new TextGeometry("A", {
-      font: this.font,
-      size: 5,
-      height: 2,
-      curveSegments: 4,
-      bevelThickness: 2,
-      bevelSize: 1.5,
-      bevelEnabled: true
-    });
 
-    let textMesh1 = new Mesh(geom, [
-      new MeshPhongMaterial({color: 0xffffff, flatShading: true}), // front
-      new MeshPhongMaterial({color: 0xffffff}) // side
-    ]);
-    textMesh1.position.x = 0;
-    textMesh1.position.y = 0;
-    textMesh1.position.z = 13;
 
-    this.scene.add(textMesh1);
   }
 
   private addObject(x: number, y: number, obj: Object3D) {
@@ -192,10 +174,17 @@ export class CubeComponent implements OnInit, AfterViewInit {
   }
 
   private startRenderingLoop() {
-    this.renderer = new WebGLRenderer({canvas: this.canvas});
+    this.renderer = new WebGLRenderer({canvas: this.canvas, antialias: true});
+
+    this.labelRenderer = new CSS2DRenderer();
+    this.labelRenderer.setSize(window.innerWidth, window.innerHeight);
+    this.labelRenderer.domElement.style.position = 'absolute';
+    this.labelRenderer.domElement.style.top = '0';
+    document.body.appendChild(this.labelRenderer.domElement);
+
     let component: CubeComponent = this;
     (function render() {
-      if (component.resizeRendererToDisplaySize(component.renderer)) {
+      if (component.resizeRendererToDisplaySize()) {
         const canvas = component.renderer.domElement;
         component.camera.aspect = canvas.clientWidth / canvas.clientHeight;
         component.camera.updateProjectionMatrix();
@@ -203,25 +192,25 @@ export class CubeComponent implements OnInit, AfterViewInit {
       requestAnimationFrame(render);
       component.animateBlochSphere();
       component.renderer.render(component.scene, component.camera);
+      component.labelRenderer.render(component.scene, component.camera);
     }());
   }
 
   private animateBlochSphere() {
     this.scene.rotation.x += 0.01;
     this.scene.rotation.y += 0.01;
-    this.objects.forEach(obj => {
-      // obj.rotation.x += 0.01;
-      // obj.rotation.y += 0.01;
-    });
+    this.objects[3].position.x += this.objects[0].position.x;
+    this.objects[3].position.y += this.objects[0].position.y;
+    this.objects[3].position.z += this.objects[0].position.z;
   }
 
-  private resizeRendererToDisplaySize(renderer: WebGLRenderer) {
-    const canvas = renderer.domElement;
-    const width = canvas.clientWidth;
-    const height = canvas.clientHeight;
-    const needResize = canvas.width !== width || canvas.height !== height;
+  private resizeRendererToDisplaySize() {
+    const width = this.canvas.clientWidth;
+    const height = this.canvas.clientHeight;
+    const needResize = this.canvas.width !== width || this.canvas.height !== height;
     if (needResize) {
-      renderer.setSize(width, height, false);
+      this.renderer.setSize(width, height, false);
+      this.labelRenderer.setSize(width, height);
     }
     return needResize;
   }
