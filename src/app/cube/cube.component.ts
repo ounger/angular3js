@@ -1,12 +1,13 @@
-import {AfterViewInit, Component, ElementRef, Input, OnInit, ViewChild} from '@angular/core';
+import {AfterViewInit, Component, ElementRef, OnInit, ViewChild} from '@angular/core';
 import {
   BufferGeometry,
   Color,
   DirectionalLight,
   Line,
   LineBasicMaterial,
-  LineDashedMaterial,
   LineLoop,
+  Mesh,
+  MeshPhongMaterial,
   Object3D,
   Path,
   PerspectiveCamera,
@@ -14,6 +15,8 @@ import {
   Vector3,
   WebGLRenderer
 } from "three";
+import {TextGeometry} from "three/examples/jsm/geometries/TextGeometry";
+import {Font, FontLoader} from "three/examples/jsm/loaders/FontLoader";
 
 @Component({
   selector: 'app-cube',
@@ -29,21 +32,11 @@ export class CubeComponent implements OnInit, AfterViewInit {
   @ViewChild("canvas")
   private canvasRef!: ElementRef;
 
-  // Cube Properties
-  @Input() public rotationSpeedX: number = 0.01;
-  @Input() public rotationSpeedY: number = 0.01;
-  @Input() public size: number = 200;
-
-  // Stage Properties
-  @Input() public cameraZ: number = 25;
-  @Input() public fieldOfView: number = 90;
-  @Input() public nearClippingPlane: number = 1;
-  @Input() public farClippingPlane: number = 1000;
-
   private camera!: PerspectiveCamera;
   private renderer!: WebGLRenderer;
   private scene!: Scene;
   private objects = new Array<Object3D>();
+  private font!: Font;
 
   constructor() {
     // Do nothing
@@ -54,6 +47,12 @@ export class CubeComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
+    const loader = new FontLoader();
+
+    let component: CubeComponent = this;
+    loader.load('assets/helvetiker_regular.typeface.json', function (response) {
+      component.font = response;
+    });
     this.createScene();
     this.createCamera();
     this.startRenderingLoop();
@@ -107,18 +106,21 @@ export class CubeComponent implements OnInit, AfterViewInit {
   }
 
   private addXAxis() {
-    this.createAxis("x");
+    this.addAxis("x");
+    this.addLabels("x");
   }
 
   private addYAxis() {
-    this.createAxis("y");
+    this.addAxis("y");
+    this.addLabels("y");
   }
 
   private addZAxis() {
-    this.createAxis("z");
+    this.addAxis("z");
+    this.addLabels("z");
   }
 
-  private createAxis(axis: "x" | "y" | "z") {
+  private addAxis(axis: "x" | "y" | "z") {
     const length = 12;
     const x = axis === "x" ? length : 0;
     const y = axis === "y" ? length : 0;
@@ -128,13 +130,35 @@ export class CubeComponent implements OnInit, AfterViewInit {
     points.push(new Vector3(-x, -y, -z));
 
     const geometry = new BufferGeometry().setFromPoints(points);
-    const material = new LineDashedMaterial({
-      color: axis === "x" ? this.red : axis === "y" ? this.green : this.blue,
-      dashSize: 2, gapSize: 1, linewidth: 1
+    const material = new LineBasicMaterial({
+      color: axis === "x" ? this.red : axis === "y" ? this.green : this.blue
     });
     const line = new Line(geometry, material);
     line.computeLineDistances();
     this.scene.add(line);
+  }
+
+  private addLabels(axis: "x" | "y" | "z") {
+    console.log(this.font);
+    let geom = new TextGeometry("A", {
+      font: this.font,
+      size: 5,
+      height: 2,
+      curveSegments: 4,
+      bevelThickness: 2,
+      bevelSize: 1.5,
+      bevelEnabled: true
+    });
+
+    let textMesh1 = new Mesh(geom, [
+      new MeshPhongMaterial({color: 0xffffff, flatShading: true}), // front
+      new MeshPhongMaterial({color: 0xffffff}) // side
+    ]);
+    textMesh1.position.x = 0;
+    textMesh1.position.y = 0;
+    textMesh1.position.z = 13;
+
+    this.scene.add(textMesh1);
   }
 
   private addObject(x: number, y: number, obj: Object3D) {
@@ -158,14 +182,13 @@ export class CubeComponent implements OnInit, AfterViewInit {
   }
 
   private createCamera() {
-    let aspectRatio = this.getAspectRatio();
     this.camera = new PerspectiveCamera(
-      this.fieldOfView,
-      aspectRatio,
-      this.nearClippingPlane,
-      this.farClippingPlane
+      90,
+      2,
+      1,
+      1000
     );
-    this.camera.position.z = this.cameraZ;
+    this.camera.position.z = 25;
   }
 
   private startRenderingLoop() {
@@ -184,11 +207,11 @@ export class CubeComponent implements OnInit, AfterViewInit {
   }
 
   private animateBlochSphere() {
-    this.scene.rotation.x += this.rotationSpeedX;
-    // this.scene.rotation.y += this.rotationSpeedY;
+    this.scene.rotation.x += 0.01;
+    this.scene.rotation.y += 0.01;
     this.objects.forEach(obj => {
-      // obj.rotation.x += this.rotationSpeedX;
-      // obj.rotation.y += this.rotationSpeedY;
+      // obj.rotation.x += 0.01;
+      // obj.rotation.y += 0.01;
     });
   }
 
@@ -201,10 +224,6 @@ export class CubeComponent implements OnInit, AfterViewInit {
       renderer.setSize(width, height, false);
     }
     return needResize;
-  }
-
-  private getAspectRatio(): number {
-    return this.canvas.clientWidth / this.canvas.clientHeight;
   }
 
   private get canvas(): HTMLCanvasElement {
