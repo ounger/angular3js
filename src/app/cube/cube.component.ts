@@ -3,6 +3,7 @@ import {
   BufferGeometry,
   Color,
   DirectionalLight,
+  Group,
   Line,
   LineBasicMaterial,
   LineLoop,
@@ -53,35 +54,32 @@ export class CubeComponent implements OnInit, AfterViewInit {
   private createScene() {
     this.scene = new Scene();
     this.scene.background = new Color(0xAAAAAA);
-    // this.scene.rotation.z += Math.PI / 4; TODO Set start position again
+    // this.scene.rotation.z += Math.PI / 4;  // TODO Reset start position
     this.addBlochSphere();
     this.addAxes();
+    this.addLabels();
     this.addLightning();
   }
 
   private addBlochSphere() {
     // We construct it simply with 3 circles
     // Check properties here: https://threejs.org/docs/#api/en/geometries/CircleGeometry
-    this.addXCircle();
-    // this.addYCircle();
-    this.addZCircle();
+    const blochSphere = new Group();
+    blochSphere.add(this.createCircle("x"));
+    blochSphere.add(this.createCircle("y"));
+    blochSphere.add(this.createCircle("z"));
+    this.scene.add(blochSphere);
+    this.objects.push(blochSphere);
   }
 
-  private addXCircle() {
-    const mesh = new LineLoop(this.createCircleGeometry(), this.createLineBasicMaterial());
-    mesh.rotation.y += Math.PI / 2;
-    this.addObject(0, 0, mesh);
-  }
-
-  private addYCircle() {
-    const mesh = new LineLoop(this.createCircleGeometry(), this.createLineBasicMaterial());
-    mesh.rotation.x += Math.PI / 2;
-    this.addObject(0, 0, mesh);
-  }
-
-  private addZCircle() {
-    const mesh = new LineLoop(this.createCircleGeometry(), this.createLineBasicMaterial());
-    this.addObject(0, 0, mesh);
+  private createCircle(axis: "x" | "y" | "z"): LineLoop {
+    const circle = new LineLoop(this.createCircleGeometry(), this.createLineBasicMaterial());
+    if (axis === "x") {
+      circle.rotation.y += Math.PI / 2;
+    } else if (axis === "y") {
+      circle.rotation.x += Math.PI / 2;
+    }
+    return circle;
   }
 
   private createCircleGeometry(): BufferGeometry {
@@ -92,27 +90,15 @@ export class CubeComponent implements OnInit, AfterViewInit {
   }
 
   private addAxes() {
-    this.addXAxis();
-    this.addYAxis();
-    this.addZAxis();
+    const axes = new Group();
+    axes.add(this.createAxis("x"));
+    axes.add(this.createAxis("y"));
+    axes.add(this.createAxis("z"));
+    this.scene.add(axes);
+    this.objects.push(axes);
   }
 
-  private addXAxis() {
-    this.addAxis("x");
-    this.addLabels("x");
-  }
-
-  private addYAxis() {
-    this.addAxis("y");
-    this.addLabels("y");
-  }
-
-  private addZAxis() {
-    this.addAxis("z");
-    this.addLabels("z");
-  }
-
-  private addAxis(axis: "x" | "y" | "z") {
+  private createAxis(axis: "x" | "y" | "z"): Line {
     const length = 12;
     const x = axis === "x" ? length : 0;
     const y = axis === "y" ? length : 0;
@@ -127,17 +113,38 @@ export class CubeComponent implements OnInit, AfterViewInit {
     });
     const line = new Line(geometry, material);
     line.computeLineDistances();
-    this.scene.add(line);
-    this.objects.push(line);
-
-    var spritey = this.makeTextSprite("Hello",
-      {fontsize: 24, borderColor: {r: 255, g: 0, b: 0, a: 1.0}, backgroundColor: {r: 255, g: 100, b: 100, a: 0.8}});
-    spritey.position.set(0, 0, 0);
-    this.scene.add(spritey);
-
+    return line;
   }
 
-  makeTextSprite(message: string, parameters: any) {
+  private addLabels() {
+    const labels = new Group();
+
+    // labels.add(this.createLabel("x", "positive"));
+    // labels.add(this.createLabel("x", "negative"));
+    //
+    labels.add(this.createLabel("y", "positive"));
+    // labels.add(this.createLabel("y", "negative"));
+    //
+    // labels.add(this.createLabel("z", "positive"));
+    // labels.add(this.createLabel("z", "negative"));
+
+    this.scene.add(labels);
+    this.objects.push(labels);
+  }
+
+  private createLabel(axis: "x" | "y" | "z", position: "positive" | "negative"): Sprite {
+    const label = this.createTextSprite(
+      axis, {fontsize: 24, borderColor: {r: 255, g: 0, b: 0, a: 1.0}, backgroundColor: {r: 255, g: 100, b: 100, a: 0.8}}
+    );
+    const dist = 12;
+    const x = axis === "x" ? (position === "positive" ? dist : dist * -1) : 0;
+    const y = axis === "y" ? (position === "positive" ? dist : dist * -1) : 0;
+    const z = axis === "z" ? (position === "positive" ? dist : dist * -1) : 0;
+    label.position.set(x, y, z);
+    return label;
+  }
+
+  createTextSprite(message: string, parameters: any): Sprite {
     if (parameters === undefined) parameters = {};
     let fontface = parameters.hasOwnProperty("fontface") ? parameters["fontface"] : "Arial";
     let fontsize = parameters.hasOwnProperty("fontsize") ? parameters["fontsize"] : 18;
@@ -166,7 +173,7 @@ export class CubeComponent implements OnInit, AfterViewInit {
     context!.fillStyle = "rgba(" + textColor.r + ", " + textColor.g + ", " + textColor.b + ", 1.0)";
     context!.fillText(message, borderThickness, fontsize + borderThickness);
 
-    let texture = new Texture(canvas)
+    let texture = new Texture(canvas);
     texture.needsUpdate = true;
 
     let spriteMaterial = new SpriteMaterial({map: texture});
@@ -189,19 +196,6 @@ export class CubeComponent implements OnInit, AfterViewInit {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-  }
-
-  private addLabels(axis: "x" | "y" | "z") {
-
-
-  }
-
-  private addObject(x: number, y: number, obj: Object3D) {
-    obj.position.x = x;
-    obj.position.y = y;
-
-    this.scene.add(obj);
-    this.objects.push(obj);
   }
 
   private createLineBasicMaterial(): LineBasicMaterial {
@@ -243,11 +237,10 @@ export class CubeComponent implements OnInit, AfterViewInit {
   }
 
   private animateBlochSphere() {
-    // this.scene.rotation.x += 0.01;
-    // this.scene.rotation.y += 0.01;
     this.objects.forEach(obj => {
       obj.rotation.x += 0.01;
       obj.rotation.y += 0.01;
+      obj.rotation.z += 0.01;
     });
   }
 
