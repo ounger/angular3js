@@ -10,10 +10,12 @@ import {
   Path,
   PerspectiveCamera,
   Scene,
+  Sprite,
+  SpriteMaterial,
+  Texture,
   Vector3,
   WebGLRenderer
 } from "three";
-import {CSS2DObject, CSS2DRenderer} from "three/examples/jsm/renderers/CSS2DRenderer";
 
 @Component({
   selector: 'app-cube',
@@ -31,7 +33,6 @@ export class CubeComponent implements OnInit, AfterViewInit {
 
   private camera!: PerspectiveCamera;
   private renderer!: WebGLRenderer;
-  private labelRenderer!: CSS2DRenderer;
   private scene!: Scene;
   private objects = new Array<Object3D>();
 
@@ -52,7 +53,7 @@ export class CubeComponent implements OnInit, AfterViewInit {
   private createScene() {
     this.scene = new Scene();
     this.scene.background = new Color(0xAAAAAA);
-    this.scene.rotation.z += Math.PI / 4;
+    // this.scene.rotation.z += Math.PI / 4; TODO Set start position again
     this.addBlochSphere();
     this.addAxes();
     this.addLightning();
@@ -62,7 +63,7 @@ export class CubeComponent implements OnInit, AfterViewInit {
     // We construct it simply with 3 circles
     // Check properties here: https://threejs.org/docs/#api/en/geometries/CircleGeometry
     this.addXCircle();
-    this.addYCircle();
+    // this.addYCircle();
     this.addZCircle();
   }
 
@@ -127,15 +128,67 @@ export class CubeComponent implements OnInit, AfterViewInit {
     const line = new Line(geometry, material);
     line.computeLineDistances();
     this.scene.add(line);
+    this.objects.push(line);
 
-    const label = document.createElement('div');
-    label.className = 'label';
-    label.textContent = 'Hello World';
-    label.style.marginTop = '-1em';
-    const labelObj = new CSS2DObject(label);
-    labelObj.position.set(0, 0, 0);
-    this.objects.push(labelObj);
-    line.add(labelObj);
+    var spritey = this.makeTextSprite("Hello",
+      {fontsize: 24, borderColor: {r: 255, g: 0, b: 0, a: 1.0}, backgroundColor: {r: 255, g: 100, b: 100, a: 0.8}});
+    spritey.position.set(0, 0, 0);
+    this.scene.add(spritey);
+
+  }
+
+  makeTextSprite(message: string, parameters: any) {
+    if (parameters === undefined) parameters = {};
+    let fontface = parameters.hasOwnProperty("fontface") ? parameters["fontface"] : "Arial";
+    let fontsize = parameters.hasOwnProperty("fontsize") ? parameters["fontsize"] : 18;
+    let borderThickness = parameters.hasOwnProperty("borderThickness") ? parameters["borderThickness"] : 4;
+    let borderColor = parameters.hasOwnProperty("borderColor") ? parameters["borderColor"] : {r: 0, g: 0, b: 0, a: 1.0};
+    let backgroundColor = parameters.hasOwnProperty("backgroundColor") ? parameters["backgroundColor"] : {
+      r: 255,
+      g: 255,
+      b: 255,
+      a: 1.0
+    };
+    let textColor = parameters.hasOwnProperty("textColor") ? parameters["textColor"] : {r: 0, g: 0, b: 0, a: 1.0};
+
+    let canvas = document.createElement('canvas');
+    let context = canvas.getContext('2d');
+    context!.font = "Bold " + fontsize + "px " + fontface;
+    let metrics = context!.measureText(message);
+    let textWidth = metrics.width;
+
+    context!.fillStyle = "rgba(" + backgroundColor.r + "," + backgroundColor.g + "," + backgroundColor.b + "," + backgroundColor.a + ")";
+    context!.strokeStyle = "rgba(" + borderColor.r + "," + borderColor.g + "," + borderColor.b + "," + borderColor.a + ")";
+
+    context!.lineWidth = borderThickness;
+    this.roundRect(context, borderThickness / 2, borderThickness / 2, (textWidth + borderThickness) * 1.1, fontsize * 1.4 + borderThickness, 8);
+
+    context!.fillStyle = "rgba(" + textColor.r + ", " + textColor.g + ", " + textColor.b + ", 1.0)";
+    context!.fillText(message, borderThickness, fontsize + borderThickness);
+
+    let texture = new Texture(canvas)
+    texture.needsUpdate = true;
+
+    let spriteMaterial = new SpriteMaterial({map: texture});
+    let sprite = new Sprite(spriteMaterial);
+    sprite.scale.set(0.5 * fontsize, 0.25 * fontsize, 0.75 * fontsize);
+    return sprite;
+  }
+
+  roundRect(ctx: any, x: number, y: number, w: number, h: number, r: number) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
   }
 
   private addLabels(axis: "x" | "y" | "z") {
@@ -176,12 +229,6 @@ export class CubeComponent implements OnInit, AfterViewInit {
   private startRenderingLoop() {
     this.renderer = new WebGLRenderer({canvas: this.canvas, antialias: true});
 
-    this.labelRenderer = new CSS2DRenderer();
-    this.labelRenderer.setSize(window.innerWidth, window.innerHeight);
-    this.labelRenderer.domElement.style.position = 'absolute';
-    this.labelRenderer.domElement.style.top = '0';
-    document.body.appendChild(this.labelRenderer.domElement);
-
     let component: CubeComponent = this;
     (function render() {
       if (component.resizeRendererToDisplaySize()) {
@@ -192,16 +239,16 @@ export class CubeComponent implements OnInit, AfterViewInit {
       requestAnimationFrame(render);
       component.animateBlochSphere();
       component.renderer.render(component.scene, component.camera);
-      component.labelRenderer.render(component.scene, component.camera);
     }());
   }
 
   private animateBlochSphere() {
-    this.scene.rotation.x += 0.01;
-    this.scene.rotation.y += 0.01;
-    this.objects[3].position.x += this.objects[0].position.x;
-    this.objects[3].position.y += this.objects[0].position.y;
-    this.objects[3].position.z += this.objects[0].position.z;
+    // this.scene.rotation.x += 0.01;
+    // this.scene.rotation.y += 0.01;
+    this.objects.forEach(obj => {
+      obj.rotation.x += 0.01;
+      obj.rotation.y += 0.01;
+    });
   }
 
   private resizeRendererToDisplaySize() {
@@ -210,7 +257,6 @@ export class CubeComponent implements OnInit, AfterViewInit {
     const needResize = this.canvas.width !== width || this.canvas.height !== height;
     if (needResize) {
       this.renderer.setSize(width, height, false);
-      this.labelRenderer.setSize(width, height);
     }
     return needResize;
   }
